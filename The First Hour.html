@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The First Hour</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: three live gauges pinned above one decision at a time, lettered options, a consequence after every pick. */
+:root {
+  box-sizing: border-box;
+  --bg: #f5f8ff; --surface: #ffffff; --ink: #0e0e0e; --muted: #454f68;
+  --blue: #266de8; --blue-text: #1c56c4; --yellow: #ffe629; --soft: #e6eeff;
+  --line: #0e0e0e; --shadow: #0e0e0e; --dot: rgba(38, 109, 232, 0.16);
+  --good-bg: #d9e6ff; --bad-bg: #ffe0dc; --bad: #d2403d; --warn: #f2b600;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #0b1020; --surface: #151c33; --ink: #f5f8ff; --muted: #aeb9d6; --blue-text: #8db1ff; --soft: #1d2848; --line: #dfe7ff; --shadow: #2b3a73; --dot: rgba(141, 177, 255, 0.14); --good-bg: #16305f; --bad-bg: #4a2027; --bad: #e0504d; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --bg: #0b1020; --surface: #151c33; --ink: #f5f8ff; --muted: #aeb9d6; --blue-text: #8db1ff; --soft: #1d2848; --line: #dfe7ff; --shadow: #2b3a73; --dot: rgba(141, 177, 255, 0.14); --good-bg: #16305f; --bad-bg: #4a2027; --bad: #e0504d; color-scheme: dark; }
+html { height: 100%; }
+*, *::before, *::after { box-sizing: inherit; }
+body { margin: 0; min-height: 100%; background: var(--bg); color: var(--ink); font: 400 17px/1.55 "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif; overflow-x: hidden; }
+body::before { content: ""; position: fixed; inset: 0; z-index: -2; pointer-events: none; background-image: radial-gradient(circle, var(--dot) 2px, transparent 2.6px); background-size: 34px 34px; }
+.deco { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+.deco i { position: absolute; border-radius: 50%; }
+.deco .a { width: 420px; height: 420px; background: var(--yellow); opacity: 0.3; left: -160px; top: 220px; }
+.deco .b { width: 540px; height: 540px; background: var(--blue); opacity: 0.14; right: -230px; bottom: -200px; }
+h1, h2, h3 { font-family: "Bricolage Grotesque", "Instrument Sans", system-ui, sans-serif; margin: 0; line-height: 1.1; text-wrap: balance; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
+h2[tabindex="-1"]:focus, h2[tabindex="-1"]:focus-visible { outline: none; }
+.top { background: var(--blue); border-bottom: 3px solid var(--line); }
+.top-in { max-width: 940px; margin: 0 auto; padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.logo { display: block; height: 34px; width: auto; }
+.top-tag { color: #fff; font-weight: 600; font-size: 15px; }
+.wrap { max-width: 940px; margin: 0 auto; padding: 26px 18px 72px; display: grid; gap: 28px; }
+.card { background: var(--surface); border: 3px solid var(--line); border-radius: 26px; box-shadow: 8px 8px 0 var(--shadow); padding: 26px; }
+.hero { text-align: center; padding: 34px 26px 30px; }
+.title { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px 14px; font-size: clamp(38px, 10vw, 68px); font-weight: 800; letter-spacing: -0.03em; }
+.stk { display: inline-block; padding: 6px 20px 10px; border: 3px solid var(--line); border-radius: 18px; box-shadow: 5px 5px 0 var(--shadow); }
+.stk.s1 { background: var(--yellow); color: #0e0e0e; transform: rotate(-2.5deg); }
+.stk.s2 { background: var(--blue); color: #fff; transform: rotate(3deg); }
+.lead { max-width: 35em; margin: 22px auto 0; font-size: 19px; }
+.note { margin: 16px auto 0; font-size: 15px; color: var(--muted); max-width: 35em; }
+.gauges { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.g { background: var(--surface); border: 3px solid var(--line); border-radius: 20px; box-shadow: 5px 5px 0 var(--shadow); padding: 12px 16px 14px; transition: background 0.3s; }
+.g.pulse { animation: pulse 0.6s ease-out; }
+.g .gl { font: 800 14px/1.2 "Bricolage Grotesque", system-ui, sans-serif; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.g .gv { margin-top: 4px; font: 800 26px/1.15 "Bricolage Grotesque", system-ui, sans-serif; letter-spacing: -0.02em; }
+.g .gs { margin-top: 4px; font-size: 14px; color: var(--muted); line-height: 1.35; }
+.segs { display: flex; gap: 6px; margin-top: 8px; }
+.segs i { flex: 1; height: 12px; border-radius: 6px; border: 2px solid var(--line); background: var(--soft); }
+.segs i.on-ok { background: var(--blue); } .segs i.on-warn { background: var(--yellow); } .segs i.on-bad { background: var(--bad); }
+.copies { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; min-height: 16px; }
+.copies i { width: 16px; height: 16px; border-radius: 5px; border: 2px solid var(--line); background: var(--yellow); }
+.copies i.first { background: var(--blue); }
+.prog { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.prog span { width: 40px; height: 40px; border-radius: 50%; border: 3px solid var(--line); display: grid; place-items: center; font: 800 16px/1 "Bricolage Grotesque", system-ui, sans-serif; background: var(--surface); }
+.prog .cur { background: var(--yellow); color: #0e0e0e; } .prog .ok { background: var(--blue); color: #fff; } .prog .no { background: var(--bad); color: #fff; }
+.step { position: relative; padding-top: 38px; margin-top: 8px; }
+.tab { position: absolute; left: 24px; top: -16px; background: var(--yellow); color: #0e0e0e; border: 3px solid var(--line); border-radius: 12px 12px 0 0; padding: 4px 16px; font: 800 17px/1.3 "Bricolage Grotesque", system-ui, sans-serif; }
+.step h2 { font-size: clamp(24px, 5vw, 32px); font-weight: 800; letter-spacing: -0.02em; }
+.step .scene { margin: 12px 0 0; font-size: 18px; }
+.file { display: inline-flex; align-items: center; gap: 8px; margin-top: 14px; background: var(--soft); border: 2px solid var(--line); border-radius: 12px; padding: 6px 12px; font: 600 15px/1.3 "Instrument Sans", system-ui, sans-serif; }
+.file b { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-weight: 600; }
+.q { font: 800 20px/1.3 "Bricolage Grotesque", system-ui, sans-serif; margin: 22px 0 12px; }
+.opts { display: grid; gap: 12px; }
+.opt { display: flex; gap: 14px; align-items: center; text-align: left; cursor: pointer; background: var(--surface); border: 3px solid var(--line); border-radius: 18px; padding: 12px 16px; font-size: 17px; line-height: 1.4; box-shadow: 5px 5px 0 var(--shadow); transition: transform 0.12s, box-shadow 0.12s, opacity 0.2s, background 0.2s; }
+.opt:hover:not([disabled]) { transform: translate(-2px, -2px); box-shadow: 7px 7px 0 var(--shadow); background: var(--soft); }
+.opt:active:not([disabled]) { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--shadow); }
+.opt[disabled] { cursor: default; box-shadow: none; }
+.opt .ltr { flex: none; width: 38px; height: 38px; border-radius: 50%; border: 3px solid var(--line); display: grid; place-items: center; background: var(--yellow); color: #0e0e0e; font: 800 17px/1 "Bricolage Grotesque", system-ui, sans-serif; }
+.opt.good { background: var(--good-bg); } .opt.good .ltr { background: var(--blue); color: #fff; }
+.opt.bad { background: var(--bad-bg); } .opt.bad .ltr { background: var(--bad); color: #fff; }
+.opt.dim { opacity: 0.5; }
+.res { margin-top: 22px; display: grid; gap: 14px; }
+.verdict { padding: 14px 18px; border: 3px solid var(--line); border-radius: 18px; box-shadow: 5px 5px 0 var(--shadow); animation: rise 0.35s ease-out; }
+.verdict.right { background: var(--good-bg); } .verdict.wrong { background: var(--bad-bg); }
+.verdict h3 { font-size: 22px; font-weight: 800; }
+.verdict p { margin: 6px 0 0; }
+.verdict p.rm { margin-top: 10px; padding-top: 10px; border-top: 2px dashed var(--line); }
+.fx { display: flex; flex-wrap: wrap; gap: 8px; }
+.fx span { background: var(--surface); border: 2px solid var(--line); border-radius: 999px; padding: 3px 12px; font: 600 14px/1.5 "Instrument Sans", system-ui, sans-serif; }
+.fx .bad { background: var(--bad-bg); }
+.remember { display: inline-block; justify-self: start; background: var(--yellow); color: #0e0e0e; border: 3px solid var(--line); border-radius: 14px; padding: 8px 16px; font: 800 18px/1.3 "Bricolage Grotesque", system-ui, sans-serif; box-shadow: 4px 4px 0 var(--shadow); transform: rotate(-1deg); }
+.btn { display: inline-flex; justify-self: start; cursor: pointer; background: var(--yellow); color: #0e0e0e; border: 3px solid var(--line); border-radius: 16px; padding: 12px 24px; font: 800 19px/1.1 "Bricolage Grotesque", system-ui, sans-serif; box-shadow: 5px 5px 0 var(--shadow); transition: transform 0.12s, box-shadow 0.12s; }
+.btn:hover { transform: translate(-2px, -2px); box-shadow: 7px 7px 0 var(--shadow); }
+.btn:active { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--shadow); }
+.tally { text-align: center; }
+.tally[hidden] { display: none; }
+.tally h2 { font-size: clamp(30px, 7vw, 44px); font-weight: 800; letter-spacing: -0.025em; }
+.tally > p { margin: 10px auto 0; max-width: 32em; font-size: 19px; }
+.stats { margin-top: 20px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; text-align: left; }
+.stats div { border: 3px solid var(--line); border-radius: 16px; padding: 10px 14px; background: var(--soft); }
+.stats b { display: block; font: 800 14px/1.2 "Bricolage Grotesque", system-ui, sans-serif; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.stats span { display: block; margin-top: 4px; font: 800 20px/1.2 "Bricolage Grotesque", system-ui, sans-serif; }
+.rows { list-style: none; margin: 20px 0 0; padding: 0; display: grid; gap: 10px; text-align: left; }
+.rows li { display: flex; gap: 12px; align-items: center; background: var(--soft); border: 3px solid var(--line); border-radius: 16px; padding: 10px 14px; font-size: 16px; line-height: 1.35; }
+.rows .mk { flex: none; width: 34px; height: 34px; border-radius: 50%; border: 3px solid var(--line); display: grid; place-items: center; font: 800 16px/1 "Bricolage Grotesque", system-ui, sans-serif; background: var(--blue); color: #fff; }
+.rows .mk.no { background: var(--bad); }
+.sheet { margin-top: 24px; text-align: left; display: grid; gap: 10px; }
+.sheet h3 { font-size: 22px; font-weight: 800; text-align: center; margin-bottom: 4px; }
+.sheet div { border: 3px solid var(--line); border-radius: 16px; padding: 10px 14px; background: var(--surface); }
+.next { text-align: center; font: 800 20px/1.3 "Bricolage Grotesque", system-ui, sans-serif; margin: 0; }
+@keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes pulse { 0% { background: var(--yellow); transform: scale(1.03); } 100% { background: var(--surface); transform: scale(1); } }
+@media (max-width: 640px) {
+  .card { padding: 18px; border-radius: 22px; box-shadow: 6px 6px 0 var(--shadow); }
+  .card.step { padding-top: 38px; }
+  .gauges { gap: 8px; }
+  .g { padding: 10px 10px 12px; border-radius: 16px; box-shadow: 4px 4px 0 var(--shadow); }
+  .g .gl { font-size: 11px; letter-spacing: 0.03em; }
+  .g .gv { font-size: 19px; }
+  .g .gs { display: none; }
+  .stats { grid-template-columns: 1fr; }
+  .opt { padding: 10px 12px; font-size: 16px; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="deco" aria-hidden="true"><i class="a"></i><i class="b"></i></div>
+<header class="top">
+  <div class="top-in">
+    <svg class="logo" role="img" aria-label="TaxDome" viewBox="0 0 120 32" width="128" height="34"><path d="M10.5356 3.37849C11.3829 2.90571 12.4132 2.87566 13.2834 3.28941L13.4548 3.37849L15.1444 4.32389C15.4687 4.50548 15.5262 4.91904 15.3533 5.20702C15.1864 5.48465 14.8167 5.62805 14.5061 5.45511L12.7885 4.49918V4.49822C12.2924 4.22151 11.6808 4.22162 11.1845 4.49822L2.10366 9.58055C1.60913 9.85854 1.30614 10.3687 1.30456 10.9187V21.0814L1.31996 21.2854C1.38689 21.7565 1.67502 22.1779 2.1104 22.4195H2.11136L11.1922 27.5019C11.6886 27.7787 12.3 27.7787 12.7962 27.5019L21.8771 22.4195L22.0533 22.3056C22.4426 22.0144 22.675 21.5636 22.6762 21.0824V10.9187C22.6748 10.4376 22.4424 9.98688 22.0533 9.6955L21.8771 9.58055L21.1598 9.17922C20.8382 8.99902 20.7781 8.58995 20.947 8.30183C21.1128 8.0197 21.4858 7.87303 21.7991 8.048L22.5366 8.45987L22.7012 8.56045C23.5066 9.08438 23.9979 9.96591 24 10.9177V21.0824C24 22.0955 23.4459 23.031 22.5472 23.5402H22.5462L13.4653 28.6226H13.4644C12.5605 29.1259 11.4491 29.126 10.5453 28.6226L1.46341 23.5402C0.560342 23.0338 0.00167075 22.0978 1.89029e-07 21.0824V10.9187C-0.000373914 9.90528 0.554559 8.96976 1.45379 8.46083V8.45987L10.5356 3.37849ZM11.4811 14.6073H8.85655V19.6916H7.16399V14.6073H4.53947V13.0757H11.4811V14.6073ZM15.5324 13.0757C17.6291 13.0757 19.1514 14.4655 19.1515 16.3822C19.1515 18.2991 17.6292 19.6916 15.5324 19.6916H12.8434V13.0757H15.5324ZM14.5359 18.1887H15.5324V18.1849C16.6441 18.1848 17.3904 17.4692 17.3906 16.3918C17.3906 15.3141 16.6443 14.5902 15.5324 14.5901H14.5359V18.1887ZM18.1271 5.36315C18.9244 5.36341 19.5712 5.98965 19.5712 6.76257C19.5712 7.53545 18.9244 8.16173 18.1271 8.16198C17.3295 8.16198 16.683 7.53561 16.6829 6.76257C16.6829 5.9895 17.3295 5.36315 18.1271 5.36315Z" fill="#FFFFFF"/><path d="M88.0975 9.99988C91.8513 9.99988 94.5377 12.6691 94.5377 16.0003C94.5375 19.3313 91.8088 21.9997 88.0553 21.9999C84.3017 21.9999 81.6154 19.3314 81.6151 16.0003C81.6151 12.7024 84.3439 10.0001 88.0975 9.99988ZM120 12.4586H113.399V14.8118H119.136V17.0947H113.399V19.5332H120V21.8021H110.74V10.1862H120V12.4586ZM54.2883 21.8012H51.4946L50.3843 19.1983H45.2374L44.1271 21.8012H41.398L46.6059 10.1159H49.075L54.2883 21.8012ZM41.7881 12.5527H37.2339V21.7995H34.5506L34.5569 12.5527H30V10.1985H41.7881V12.5527ZM61.0577 13.96L63.6316 10.1985H66.671L62.5958 15.8658L66.8378 21.7995H63.7168L60.9859 17.8235L58.2407 21.7995H55.2004L59.4398 15.8992L55.3753 10.1985H58.5035L61.0577 13.96ZM73.4736 10.1985C77.2969 10.1987 79.9398 12.7015 79.9398 15.9994C79.9394 19.297 77.2967 21.7993 73.4736 21.7995H68.7293V10.1985H73.4736ZM102.509 15.094L105.705 10.1862H108.589V21.7924H105.931V14.2185L102.509 19.172H102.44L99.0506 14.28V21.7924H96.4265V10.1862H99.3116L102.509 15.094ZM88.0661 12.3531C85.9117 12.3531 84.417 13.9773 84.4169 15.9986C84.4171 18.0196 85.9466 19.6528 88.1011 19.6528C90.2553 19.6526 91.7492 18.0195 91.7494 15.9986C91.7493 14.0107 90.2204 12.3533 88.0661 12.3531ZM71.4055 19.4963H73.4736C75.6628 19.4963 77.1414 18.0861 77.1417 15.9986C77.1417 13.9108 75.6631 12.5008 73.4736 12.5008H71.4055V19.4963ZM46.1979 16.9435H49.4175L47.8077 13.1829L46.1979 16.9435Z" fill="#FFFFFF"/></svg>
+    <span class="top-tag">AI Security course</span>
+  </div>
+</header>
+<main class="wrap">
+  <section class="card hero" aria-labelledby="pageTitle">
+    <h1 class="title" id="pageTitle"><span class="stk s1">The first</span><span class="stk s2">hour</span></h1>
+    <p class="lead">You pasted the wrong file into the wrong account. Six decisions follow. Pick one answer each time, and watch what your choices do to the clock, the evidence and the copies of the data.</p>
+    <p class="note">Nothing you answer is recorded, and you can play as often as you like. If you pick a wrong answer, the story carries on with the right move, so you always finish the hour. All names, files and numbers are invented.</p>
+  </section>
+
+  <section class="gauges" aria-label="How your choices are adding up">
+    <div class="g" id="gTime"><div class="gl">Time lost</div><div class="gv" id="vTime">0 min</div><div class="gs" id="sTime">Every delay lets the data sit longer.</div></div>
+    <div class="g" id="gEv"><div class="gl">Evidence</div><div class="gv" id="vEv">Intact</div><div class="segs" id="segs" aria-hidden="true"><i></i><i></i><i></i></div></div>
+    <div class="g" id="gCopies"><div class="gl">Places the data sits</div><div class="gv" id="vCopies">1</div><div class="copies" id="copies" aria-hidden="true"></div></div>
+  </section>
+
+  <div class="prog" id="prog" role="img" aria-label="Progress through six decisions"></div>
+
+  <div id="stage"></div>
+
+  <section class="card tally" id="tally" role="status" hidden>
+    <h2 id="tHead"></h2>
+    <p id="tText"></p>
+    <div class="stats" id="stats"></div>
+    <ul class="rows" id="rows"></ul>
+    <div class="sheet">
+      <h3>Before you move on</h3>
+      <div><b>Stop.</b> Send nothing more, and don’t try to fix it yourself.</div>
+      <div><b>Keep.</b> Leave the chat and the file alone, and take a screenshot that shows the tool, the account and the time.</div>
+      <div><b>Tell.</b> Tell your manager and InfoSec straight away. Describe the data, never paste it, and answer every question fully.</div>
+    </div>
+    <button type="button" class="btn" id="again" style="margin: 22px auto 0">Play again</button>
+  </section>
+
+  <p class="next">Next: the checkpoint quiz.</p>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  /* fx: min = minutes lost, ev = evidence damage (1 weakened, 2 lost), copies = extra places the data now sits */
+  var STEPS = [
+    { tag: "Step 1 · Stop", title: "Right after you press send",
+      scene: "It is 10:42. You were building a follow-up list for a webinar and pasted a file into an AI chat. Then you see the account name in the corner: it is your personal email, not the company one.",
+      file: "client_export.csv · about 200 client names, emails and balances",
+      q: "What do you do first?",
+      short: "Stop", right: 1,
+      rem: "Stop. Send nothing more.",
+      opts: [
+        { t: "Ask the chatbot to forget the file and ignore what you pasted.", fx: { min: 2 },
+          why: "Asking a tool to forget does not undo what it already received, and now there is more typing in the chat." },
+        { t: "Stop. Send nothing more and change nothing in the chat.",
+          why: "Stopping keeps the problem the size it is. You don’t need to know how serious it is, only to stop adding to it." },
+        { t: "Paste a cleaned-up version with the balances removed.", fx: { min: 3, copies: 1 },
+          why: "A cleaned-up paste is a second copy of the data in the same tool. Quiet fixes usually mean more pasting." },
+        { t: "Finish the follow-up list quickly. It’s already in there anyway.", fx: { min: 10, copies: 1 },
+          why: "Every extra minute in that chat adds more. The first move is to stop using the tool for this task." }
+      ] },
+    { tag: "Step 2 · Keep", title: "What you do with the evidence",
+      scene: "The chat is still open on your screen. InfoSec will need to see what was shared, where and when.",
+      q: "What do you keep, and how?",
+      short: "Keep", right: 2,
+      rem: "Keep the evidence. Delete nothing.",
+      opts: [
+        { t: "Delete the chat, so nobody else can see what you pasted.", fx: { ev: 2, min: 1 },
+          why: "Deleting does not undo the paste, and it removes the record InfoSec needs to see what was exposed." },
+        { t: "Copy the whole chat into a document, to have your own record.", fx: { copies: 1, min: 4 },
+          why: "A copy in a document is one more place the client data now sits. A screenshot of the chat does the job without moving the data." },
+        { t: "Take a screenshot that shows the tool, the account and the time, and delete nothing.",
+          why: "That is the evidence: what the tool was, which account, and when. The chat and the file stay where they are until InfoSec says how to handle them." },
+        { t: "Clear your browser history, so the tab doesn’t keep showing it.", fx: { ev: 1, min: 1 },
+          why: "Clearing history removes part of your own trail and doesn’t touch what the tool received." }
+      ] },
+    { tag: "Step 3 · Tell", title: "Who needs to know",
+      scene: "Your screenshot is saved. Your heart is still going fast. A teammate sits two desks away, and your manager is online.",
+      q: "Who do you tell, and where?",
+      short: "Tell", right: 3,
+      rem: "Tell your manager and InfoSec, right away.",
+      opts: [
+        { t: "Tell the teammate two desks away and ask what they would do.", fx: { min: 25 },
+          why: "A chat with a teammate feels like telling someone, but it isn’t a report. Nobody who can act on it has heard yet." },
+        { t: "Ask in #security-helpdesk whether this counts, and wait for an answer.", fx: { min: 30 },
+          why: "That channel is for questions. If you are not sure which one you have, report it as an incident." },
+        { t: "Wait for your 1:1 later this week and bring it up then.", fx: { min: 2880 },
+          why: "The policy sets 24 hours as the latest you can report, and failing to report is itself a violation. This goes straight away." },
+        { t: "Tell your direct manager and post in #security_incidents, or email infosec@taxdome.com.",
+          why: "Your manager and InfoSec hear it now, from you. You can stay in that one thread and answer InfoSec’s questions." }
+      ] },
+    { tag: "Step 4 · The report", title: "What the message says",
+      scene: "You open #security_incidents. The message box is empty, and it is a public channel.",
+      q: "Which message do you send?",
+      short: "Report", right: 0,
+      rem: "Describe the data. Never paste it.",
+      opts: [
+        { t: "“At 10:42 I pasted a client list into a free AI chatbot, signed in with my personal email. About 200 client names, emails and balances. I noticed straight away, stopped and kept a screenshot. I have not deleted anything, and my manager knows. What should I do next?”",
+          why: "It holds what happened, when, the tool and account, the kind of data, what you kept and what you did since, and it never repeats the data." },
+        { t: "“Here is what I pasted:” and the first ten rows of the file, so InfoSec can see exactly.", fx: { copies: 1, min: 2 },
+          why: "That posts client data in a public channel, which is another copy in another place. Describe the data. If InfoSec needs specifics, they will ask." },
+        { t: "“Small slip with an AI tool earlier, nothing to worry about, I’ll sort it out myself.”", fx: { min: 20 },
+          why: "Nobody can act on that. InfoSec has to come back with questions first, and ‘sort it out myself’ is the quiet fix to avoid." },
+        { t: "Wait until you’ve counted exactly which clients are in the file, then send a full report.", fx: { min: 45 },
+          why: "Report the suspicion now. A rough description sent fast beats a perfect one sent late, and InfoSec can find the details." }
+      ] },
+    { tag: "Step 5 · Pressure", title: "A well-meant suggestion",
+      scene: "Your report is in. A teammate who saw your screen messages you: “Delete it before anyone looks. It’s only 200 emails and nobody will know.”",
+      q: "What do you answer?",
+      short: "Pressure", right: 1,
+      rem: "Reported means kept, not deleted.",
+      opts: [
+        { t: "Delete it. You can explain afterwards.", fx: { ev: 2, min: 1 },
+          why: "Deleting now removes the one record that shows what was exposed, right after you reported it." },
+        { t: "Thank them, say you have already reported it, and leave the chat as it is.",
+          why: "Kind of them, but the report is made and the evidence stays. Tell them InfoSec leads from here, and that the chat stays until InfoSec says otherwise." },
+        { t: "Ask them to keep quiet while you decide what to do.", fx: { min: 5 },
+          why: "You have already decided: you reported. Asking for quiet adds a secret to a problem that needs more people looking, not fewer." },
+        { t: "Delete only the original file, and keep the chat.", fx: { ev: 1, min: 2 },
+          why: "The original file is part of what InfoSec checks. Leave everything as it is until they say how." }
+      ] },
+    { tag: "Step 6 · Follow-up", title: "InfoSec comes back with questions",
+      scene: "InfoSec replies in the thread: “Thanks for reporting. Which tool and account was it? Have you used the same chat before?” You remember pasting a shorter list into it last week.",
+      q: "What do you answer?",
+      short: "Answer", right: 2,
+      rem: "Answer fully, even when it is awkward.",
+      opts: [
+        { t: "Answer what was asked about today, and skip last week. It was probably fine.", fx: { min: 30 },
+          why: "InfoSec is working from your answers. A missing earlier paste means they may not check the whole picture." },
+        { t: "Delete last week’s messages first, then answer.", fx: { ev: 2, min: 5 },
+          why: "That removes evidence at the moment InfoSec is asking for it. Leave it all in place and say it exists." },
+        { t: "Give the tool, the account and the earlier paste, and say what you did and kept.",
+          why: "Answering fully is what lets InfoSec rate how serious this is and contain it. The earlier paste is part of that." },
+        { t: "Tell them you will reply tomorrow, once you have gathered everything.", fx: { min: 240 },
+          why: "Every hour you wait is an hour the data sits there. Answer now with what you know, and add details as you find them." }
+      ] }
+  ];
+
+  var stage = document.getElementById("stage");
+  var tally = document.getElementById("tally");
+  var prog = document.getElementById("prog");
+  var s;
+
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+  function fmt(m) {
+    if (m < 60) return m + " min";
+    if (m < 1440) { var h = Math.floor(m / 60), r = m % 60; return h + " h" + (r ? " " + r + " min" : ""); }
+    var d = Math.round(m / 1440); return d + " day" + (d === 1 ? "" : "s");
+  }
+  var EVTXT = ["Intact", "Weakened", "Lost"];
+
+  function renderGauges(pulse) {
+    document.getElementById("vTime").textContent = fmt(s.min);
+    var tg = document.getElementById("gTime");
+    document.getElementById("sTime").textContent = s.min === 0 ? "Every delay lets the data sit longer." : (s.min >= 1440 ? "Past the 24 hours the policy allows." : "Minutes the data sat while you hesitated.");
+    document.getElementById("vEv").textContent = EVTXT[s.ev];
+    var segs = document.getElementById("segs").children;
+    for (var i = 0; i < 3; i++) {
+      var on = i < 3 - s.ev;
+      segs[i].className = on ? (s.ev === 0 ? "on-ok" : s.ev === 1 ? "on-warn" : "on-bad") : "";
+    }
+    document.getElementById("vCopies").textContent = String(s.copies);
+    var c = document.getElementById("copies");
+    c.innerHTML = "";
+    for (var k = 0; k < s.copies; k++) c.appendChild(el("i", k === 0 ? "first" : ""));
+    if (pulse) pulse.forEach(function (id) {
+      var g = document.getElementById(id);
+      g.classList.remove("pulse"); void g.offsetWidth; g.classList.add("pulse");
+    });
+  }
+
+  function renderProg() {
+    prog.innerHTML = "";
+    STEPS.forEach(function (st, i) {
+      var cls = "";
+      if (s.res[i] === true) cls = "ok"; else if (s.res[i] === false) cls = "no"; else if (i === s.i && !s.done) cls = "cur";
+      prog.appendChild(el("span", cls, String(i + 1)));
+    });
+  }
+
+  function reset() {
+    s = { i: 0, res: [], pick: [], min: 0, minAtReport: 0, ev: 0, copies: 1, done: false };
+    tally.hidden = true;
+    renderGauges();
+    renderProg();
+    showStep();
+  }
+
+  function effectChips(fx) {
+    var chips = [];
+    if (fx.min) chips.push(["+" + fmt(fx.min) + " lost", true]);
+    if (fx.ev === 2) chips.push(["Evidence lost", true]);
+    else if (fx.ev === 1) chips.push(["Evidence weakened", true]);
+    if (fx.copies) chips.push(["+" + fx.copies + " place" + (fx.copies > 1 ? "s" : "") + " the data sits", true]);
+    return chips;
+  }
+
+  function showStep() {
+    var st = STEPS[s.i];
+    var answered = false;
+    stage.innerHTML = "";
+    var card = el("section", "card step");
+    card.appendChild(el("div", "tab", st.tag));
+    var h2 = el("h2", null, st.title);
+    h2.tabIndex = -1;
+    card.appendChild(h2);
+    card.appendChild(el("p", "scene", st.scene));
+    if (st.file) {
+      var f = el("div", "file");
+      f.appendChild(el("b", null, st.file.split(" · ")[0]));
+      f.appendChild(el("span", null, st.file.split(" · ")[1]));
+      card.appendChild(f);
+    }
+    card.appendChild(el("p", "q", st.q));
+    var list = el("div", "opts");
+    var btns = [];
+    st.opts.forEach(function (o, idx) {
+      var b = el("button", "opt");
+      b.type = "button";
+      b.appendChild(el("span", "ltr", String.fromCharCode(65 + idx)));
+      b.appendChild(el("span", null, o.t));
+      b.addEventListener("click", function () { pick(idx); });
+      btns.push(b);
+      list.appendChild(b);
+    });
+    card.appendChild(list);
+    var slot = el("div", "res");
+    slot.setAttribute("aria-live", "polite");
+    card.appendChild(slot);
+    stage.appendChild(card);
+    h2.focus({ preventScroll: true });
+
+    function pick(idx) {
+      if (answered) return;
+      answered = true;
+      var o = st.opts[idx];
+      var good = idx === st.right;
+      var fx = o.fx || {};
+      s.res[s.i] = good;
+      s.pick[s.i] = idx;
+      s.min += fx.min || 0;
+      if (s.i <= 3) s.minAtReport += fx.min || 0;
+      if (fx.ev) s.ev = Math.max(s.ev, fx.ev);
+      s.copies += fx.copies || 0;
+      var pulse = [];
+      if (fx.min) pulse.push("gTime"); if (fx.ev) pulse.push("gEv"); if (fx.copies) pulse.push("gCopies");
+      renderGauges(pulse);
+      renderProg();
+      btns.forEach(function (b, i) {
+        b.disabled = true;
+        if (i === st.right) b.classList.add("good");
+        else if (i === idx) b.classList.add("bad");
+        else b.classList.add("dim");
+      });
+      var v = el("div", "verdict " + (good ? "right" : "wrong"));
+      v.appendChild(el("h3", null, good ? "Right move." : "Not this one."));
+      v.appendChild(el("p", null, o.why));
+      if (!good) {
+        var rm = el("p", "rm");
+        rm.appendChild(el("b", null, "The right move: "));
+        rm.appendChild(document.createTextNode(st.opts[st.right].why));
+        v.appendChild(rm);
+      }
+      slot.appendChild(v);
+      var chips = effectChips(fx);
+      if (chips.length) {
+        var fxEl = el("div", "fx");
+        chips.forEach(function (c) { fxEl.appendChild(el("span", "bad", c[0])); });
+        slot.appendChild(fxEl);
+      }
+      slot.appendChild(el("div", "remember", st.rem));
+      var last = s.i === STEPS.length - 1;
+      var nx = el("button", "btn", last ? "See how your hour went" : "Next step");
+      nx.type = "button";
+      nx.addEventListener("click", function () {
+        if (last) finish(); else { s.i++; renderProg(); showStep(); window.scrollTo({ top: 0, behavior: "smooth" }); }
+      });
+      slot.appendChild(nx);
+      nx.focus({ preventScroll: true });
+      v.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+  }
+
+  function finish() {
+    s.done = true;
+    renderProg();
+    stage.innerHTML = "";
+    var n = s.res.filter(function (r) { return r === true; }).length;
+    var head, text;
+    if (n === STEPS.length) { head = "Six out of six."; text = "A clean hour: you stopped, kept the evidence, told the right people and answered fully."; }
+    else if (n >= 4) { head = n + " out of " + STEPS.length + "."; text = "A solid hour, with a few moments that cost you. Look at the red rows and replay to try them again."; }
+    else { head = n + " out of " + STEPS.length + "."; text = "A hard hour, and that is what practice is for. Read each reason, then replay and try the other options."; }
+    document.getElementById("tHead").textContent = head;
+    document.getElementById("tText").textContent = text;
+
+    var reportMin = 6 + s.minAtReport;
+    var stats = document.getElementById("stats");
+    stats.innerHTML = "";
+    [["Report reached InfoSec", fmt(reportMin) + " after the paste"],
+     ["Evidence", EVTXT[s.ev]],
+     ["Places the data sits", String(s.copies)]].forEach(function (p) {
+      var d = el("div");
+      d.appendChild(el("b", null, p[0]));
+      d.appendChild(el("span", null, p[1]));
+      stats.appendChild(d);
+    });
+
+    var rows = document.getElementById("rows");
+    rows.innerHTML = "";
+    STEPS.forEach(function (st, i) {
+      var li = el("li");
+      li.appendChild(el("span", "mk" + (s.res[i] ? "" : " no"), String(i + 1)));
+      var picked = String.fromCharCode(65 + s.pick[i]);
+      var rightL = String.fromCharCode(65 + st.right);
+      li.appendChild(el("span", null, st.short + ": " + (s.res[i] ? "you picked " + picked + ", the right move." : "you picked " + picked + ", the right move was " + rightL + ".")));
+      rows.appendChild(li);
+    });
+    tally.hidden = false;
+    tally.scrollIntoView({ block: "start", behavior: "smooth" });
+  }
+
+  document.getElementById("again").addEventListener("click", function () {
+    reset();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+  reset();
+})();
+</script>
+</body>
+</html>
